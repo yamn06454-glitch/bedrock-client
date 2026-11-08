@@ -18,10 +18,13 @@ public class App extends Application {
     private static boolean game;
     private static Resources mcRes;
     private static ApplicationInfo mcInfo;
+    private static int mcTheme;
 
     public static boolean isGameProcess() { return game; }
     public static Resources mcResources() { return mcRes; }
     public static ApplicationInfo mcInfo() { return mcInfo; }
+    /** Minecraft's own activity theme id (AppCompat based), resolved against its resources. */
+    public static int mcTheme() { return mcTheme; }
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -48,7 +51,8 @@ public class App extends Application {
             PackageManager pm = getPackageManager();
             mcInfo = pm.getApplicationInfo(GameEnv.MC_PKG, 0);
             mcRes = pm.getResourcesForApplication(mcInfo);
-            Trace.mark(files, "app: Minecraft resources ok");
+            mcTheme = findMcTheme(pm);
+            Trace.mark(files, "app: Minecraft resources ok, theme=0x" + Integer.toHexString(mcTheme));
         } catch (Throwable t) {
             Log.e("BClient", "cannot load Minecraft resources", t);
             Trace.mark(files, "✗ app: Minecraft resources failed: " + t);
@@ -61,6 +65,24 @@ public class App extends Application {
         } else {
             Trace.mark(files, "app: hooks disabled (safe mode)");
         }
+    }
+
+    private static int findMcTheme(PackageManager pm) {
+        for (String cls : new String[]{"com.mojang.minecraftpe.MainActivity", "com.mojang.minecraftpe.Launcher"}) {
+            try {
+                int t = pm.getActivityInfo(new android.content.ComponentName(GameEnv.MC_PKG, cls), 0).getThemeResource();
+                if (t != 0) return t;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (mcInfo != null && mcInfo.theme != 0) return mcInfo.theme;
+        if (mcRes != null) {
+            for (String n : new String[]{"Theme.AppCompat.NoActionBar", "Theme.AppCompat"}) {
+                int t = mcRes.getIdentifier(n, "style", GameEnv.MC_PKG);
+                if (t != 0) return t;
+            }
+        }
+        return 0;
     }
 
     @Override

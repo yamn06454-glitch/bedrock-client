@@ -14,7 +14,9 @@ import android.os.Process;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
 import android.view.PixelCopy;
+import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.yamn.bclient.ui.RestartActivity;
@@ -53,17 +55,34 @@ final class Actions {
 
     static void screenshot(Activity a) {
         View d = a.getWindow().getDecorView();
-        int w = d.getWidth(), h = d.getHeight();
+        SurfaceView sv = findSurface(d);
+        View src = sv != null ? sv : d;
+        int w = src.getWidth(), h = src.getHeight();
         if (w <= 0 || h <= 0) return;
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        PixelCopy.OnPixelCopyFinishedListener done = res -> {
+            if (res == PixelCopy.SUCCESS) new Thread(() -> save(a, bmp), "shot-save").start();
+            else toast(a, "فشلت لقطة الشاشة (" + res + ")");
+        };
         try {
-            PixelCopy.request(a.getWindow(), bmp, res -> {
-                if (res == PixelCopy.SUCCESS) new Thread(() -> save(a, bmp), "shot-save").start();
-                else toast(a, "فشلت لقطة الشاشة (" + res + ")");
-            }, new Handler(Looper.getMainLooper()));
+            Handler hd = new Handler(Looper.getMainLooper());
+            if (sv != null) PixelCopy.request(sv, bmp, done, hd);
+            else PixelCopy.request(a.getWindow(), bmp, done, hd);
         } catch (Throwable t) {
             toast(a, "لقطة الشاشة غير مدعومة هنا");
         }
+    }
+
+    private static SurfaceView findSurface(View v) {
+        if (v instanceof SurfaceView && v.getWidth() > 0) return (SurfaceView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                SurfaceView s = findSurface(g.getChildAt(i));
+                if (s != null) return s;
+            }
+        }
+        return null;
     }
 
     private static void save(Activity a, Bitmap bmp) {

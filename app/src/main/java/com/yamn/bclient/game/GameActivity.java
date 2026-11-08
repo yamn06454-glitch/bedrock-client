@@ -17,7 +17,7 @@ import com.yamn.bclient.core.Trace;
 import java.io.File;
 
 /**
- * Extends the REAL Minecraft MainActivity (loaded at runtime from the installed game
+ * Extends the REAL Minecraft MainActivity (AppCompat / androidgamesdk GameActivity in 1.26+) (loaded at runtime from the installed game
  * by LoaderFactory). Runs only in the :game process.
  */
 public class GameActivity extends MainActivity {
@@ -30,6 +30,9 @@ public class GameActivity extends MainActivity {
         p.reload();
         if (p.getBool(K.KEEP_ON, true)) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (p.getBool(K.HI_REFRESH, true)) maxRefreshRate();
+        // Minecraft's MainActivity is an AppCompat (Android Game SDK) activity:
+        // give it its own theme from its own resources.
+        if (App.mcTheme() != 0) setTheme(App.mcTheme());
         Trace.mark(getFilesDir(), "activity: Minecraft onCreate starting");
         try {
             super.onCreate(b);
