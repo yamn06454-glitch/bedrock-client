@@ -1,7 +1,6 @@
 package org.levimc.launcher.util;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
@@ -47,7 +46,7 @@ public class PlayStoreValidator {
     }
 
     public static boolean isLicenseVerified(Context context) {
-        return isMinecraftFromPlayStore(context);
+        return isMinecraftInstalled(context);
     }
 
 }
