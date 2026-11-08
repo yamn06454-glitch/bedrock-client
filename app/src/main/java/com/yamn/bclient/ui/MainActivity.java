@@ -3,7 +3,12 @@ package com.yamn.bclient.ui;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.app.ActivityManager;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -17,6 +22,8 @@ import android.widget.Toast;
 
 import com.yamn.bclient.BuildConfig;
 import com.yamn.bclient.core.GameEnv;
+import com.yamn.bclient.core.K;
+import com.yamn.bclient.core.Trace;
 import com.yamn.bclient.core.McCheck;
 import com.yamn.bclient.core.Preparer;
 import com.yamn.bclient.core.Prefs;
@@ -30,6 +37,8 @@ public class MainActivity extends Activity {
     private TextView mcTitle, mcSub, progressTv, launchBtn;
     private ProgressBar progress;
     private FrameLayout settingsHost;
+    private LinearLayout crashCard;
+    private TextView crashMsg;
     private volatile boolean busy;
     private int lastPct = -1;
 
@@ -70,6 +79,26 @@ public class MainActivity extends Activity {
         card.addView(mcSub, Ui.lp(-1, -2, Ui.dp(this, 4)));
         root.addView(card, Ui.lp(-1, -2, Ui.dp(this, 18)));
 
+        // last-crash card (hidden unless the previous launch died)
+        crashCard = Ui.vbox(this);
+        crashCard.setBackground(Ui.round(this, 0xFF3A1518, 16));
+        crashCard.setPadding(pad, pad, pad, pad);
+        crashCard.addView(Ui.text(this, "⚠️ اللعبة طفت في آخر تشغيل", 16, 0xFFFCA5A5, true));
+        crashMsg = Ui.text(this, "", 12, Ui.TEXT, false);
+        crashCard.addView(crashMsg, Ui.lp(-1, -2, Ui.dp(this, 6)));
+        LinearLayout cr = Ui.hbox(this);
+        int m4 = Ui.dp(this, 4);
+        cr.addView(Ui.button(this, "📋 عرض السجل", Ui.CARD2, Ui.TEXT, v -> showLog()), Ui.weight(1, m4));
+        cr.addView(Ui.button(this, "🛡️ شغّل بدون hooks", Ui.CARD2, Ui.TEXT, v -> {
+            p.set(K.HOOKS, false);
+            p.save();
+            reloadUi();
+            onLaunch();
+        }), Ui.weight(1, m4));
+        crashCard.addView(cr, Ui.lp(-1, -2, Ui.dp(this, 10)));
+        crashCard.setVisibility(View.GONE);
+        root.addView(crashCard, Ui.lp(-1, -2, Ui.dp(this, 12)));
+
         launchBtn = Ui.button(this, "▶  تشغيل اللعبة", Ui.ACCENT, 0xFF0B0D10, v -> onLaunch());
         launchBtn.setTextSize(19);
         root.addView(launchBtn, Ui.lp(-1, Ui.dp(this, 60), Ui.dp(this, 14)));
@@ -90,12 +119,15 @@ public class MainActivity extends Activity {
         settingsHost = new FrameLayout(this);
         root.addView(settingsHost, Ui.lp(-1, -2, 0));
 
+        TextView logBtn = Ui.button(this, "📋 سجل آخر تشغيل", Ui.CARD, Ui.TEXT, v -> showLog());
+        root.addView(logBtn, Ui.lp(-1, -2, Ui.dp(this, 20)));
+
         TextView reset = Ui.button(this, "🧹 إعادة تجهيز ملفات اللعبة", Ui.CARD, Ui.TEXT, v -> {
             if (busy) return;
             Preparer.clearCache(this);
             Toast.makeText(this, "تم المسح، بيتجهز من جديد عند التشغيل", Toast.LENGTH_SHORT).show();
         });
-        root.addView(reset, Ui.lp(-1, -2, Ui.dp(this, 20)));
+        root.addView(reset, Ui.lp(-1, -2, Ui.dp(this, 8)));
 
         TextView foot = Ui.text(this, "يشغّل نسختك الأصلية من ماين كرافت (Google Play) بدون تعديل ملفاتها.\nعوالم اللانشر منفصلة عن تطبيق ماين كرافت الأصلي.", 12, Ui.SUB, false);
         foot.setGravity(Gravity.CENTER);
@@ -108,8 +140,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        reloadUi();
+    }
+
+    private void reloadUi() {
         p.reload();
         refreshStatus();
+        refreshCrash();
         settingsHost.removeAllViews();
         settingsHost.addView(SettingsUi.build(this, p, false, null));
     }
@@ -175,6 +212,10 @@ public class MainActivity extends Activity {
 
     private void startGame() {
         done();
+        Trace.reset(getFilesDir(), "launcher: starting game • launcher v" + BuildConfig.VERSION_NAME
+                + " • mc " + info.versionName + " • Android " + android.os.Build.VERSION.RELEASE
+                + " • " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL
+                + " • hooks " + (p.getBool(K.HOOKS, true) ? "on" : "off"));
         Intent i = new Intent();
         i.setClassName(getPackageName(), GAME_ACTIVITY); // by name: class only loadable in :game
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -187,6 +228,114 @@ public class MainActivity extends Activity {
         progress.setVisibility(View.GONE);
         progressTv.setVisibility(View.GONE);
         refreshStatus();
+    }
+
+    // ------------------------------------------------------------ crash diagnostics
+
+    private boolean gameAlive() {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            for (ActivityManager.RunningAppProcessInfo pi : am.getRunningAppProcesses()) {
+                if (pi.processName != null && pi.processName.endsWith(":game")) return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    private void refreshCrash() {
+        String trace = Trace.read(Trace.traceFile(getFilesDir()));
+        String crash = Trace.read(Trace.crashFile(getFilesDir()));
+        boolean died = !crash.isEmpty()
+                || (!trace.isEmpty() && !trace.contains(Trace.OK_MARK) && !gameAlive());
+        crashCard.setVisibility(died ? View.VISIBLE : View.GONE);
+        if (died) {
+            String[] lines = trace.trim().split("\n");
+            String last = lines.length > 0 ? lines[lines.length - 1] : "";
+            crashMsg.setText("آخر خطوة: " + last + "\nاضغط \"عرض السجل\" وانسخه وأرسله للمطور.");
+        }
+    }
+
+    private String collectLog() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Bedrock Client ").append(BuildConfig.VERSION_NAME).append(" ===\n");
+        sb.append("Device: ").append(android.os.Build.MANUFACTURER).append(' ').append(android.os.Build.MODEL)
+                .append(" • Android ").append(android.os.Build.VERSION.RELEASE)
+                .append(" (SDK ").append(android.os.Build.VERSION.SDK_INT).append(")\n");
+        sb.append("Minecraft: ").append(info == null ? "?" : info.versionName).append("\n\n");
+        sb.append("--- launch trace ---\n").append(Trace.read(Trace.traceFile(getFilesDir()))).append('\n');
+        String crash = Trace.read(Trace.crashFile(getFilesDir()));
+        if (!crash.isEmpty()) sb.append("--- java crash ---\n").append(crash).append('\n');
+        sb.append("--- logcat (game process) ---\n").append(logcat());
+        return sb.toString();
+    }
+
+    /** Our own uid's log lines (no permission needed). Keeps lines from the game pid + crash tags. */
+    private String logcat() {
+        String trace = Trace.read(Trace.traceFile(getFilesDir()));
+        String pid = null;
+        java.util.regex.Matcher mm = java.util.regex.Pattern.compile("pid (\\d+)").matcher(trace);
+        while (mm.find()) pid = mm.group(1);
+        StringBuilder out = new StringBuilder();
+        try {
+            java.lang.Process pr = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-v", "threadtime", "-t", "3000"});
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pr.getInputStream()));
+            java.util.ArrayDeque<String> keep = new java.util.ArrayDeque<>();
+            String line;
+            while ((line = r.readLine()) != null) {
+                boolean mine = pid != null && line.matches("^\\S+\\s+\\S+\\s+" + pid + "\\s.*");
+                boolean important = line.contains("AndroidRuntime") || line.contains("Fatal signal")
+                        || line.contains("BClient") || line.contains(" F libc") || line.contains(" F DEBUG");
+                if (mine || important) {
+                    keep.add(line);
+                    if (keep.size() > 400) keep.poll();
+                }
+            }
+            for (String l : keep) out.append(l).append('\n');
+        } catch (Throwable t) {
+            out.append("logcat failed: ").append(t);
+        }
+        return out.length() == 0 ? "(empty)\n" : out.toString();
+    }
+
+    private void showLog() {
+        progressTv.setVisibility(View.VISIBLE);
+        progressTv.setText("جاري تجميع السجل…");
+        new Thread(() -> {
+            String log = collectLog();
+            runOnUiThread(() -> {
+                progressTv.setVisibility(View.GONE);
+                TextView tv = new TextView(this);
+                tv.setText(log);
+                tv.setTextIsSelectable(true);
+                tv.setTypeface(Typeface.MONOSPACE);
+                tv.setTextSize(10);
+                tv.setTextColor(Ui.TEXT);
+                tv.setTextDirection(View.TEXT_DIRECTION_LTR);
+                int pd = Ui.dp(this, 12);
+                tv.setPadding(pd, pd, pd, pd);
+                android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+                hs.addView(tv);
+                ScrollView sv = new ScrollView(this);
+                sv.addView(hs);
+                new AlertDialog.Builder(this)
+                        .setTitle("سجل آخر تشغيل")
+                        .setView(sv)
+                        .setPositiveButton("📋 نسخ", (d, w) -> {
+                            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                            cm.setPrimaryClip(ClipData.newPlainText("bedrock-client-log", log));
+                            Toast.makeText(this, "انسخ ✓ — الصقه في المحادثة", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNeutralButton("مشاركة", (d, w) -> {
+                            Intent i = new Intent(Intent.ACTION_SEND);
+                            i.setType("text/plain");
+                            i.putExtra(Intent.EXTRA_TEXT, log);
+                            startActivity(Intent.createChooser(i, "مشاركة السجل"));
+                        })
+                        .setNegativeButton("إغلاق", null)
+                        .show();
+            });
+        }, "collect-log").start();
     }
 
     private void openStore() {

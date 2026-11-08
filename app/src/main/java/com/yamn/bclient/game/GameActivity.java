@@ -12,6 +12,7 @@ import com.yamn.bclient.App;
 import com.yamn.bclient.core.GameEnv;
 import com.yamn.bclient.core.K;
 import com.yamn.bclient.core.Prefs;
+import com.yamn.bclient.core.Trace;
 
 import java.io.File;
 
@@ -29,7 +30,14 @@ public class GameActivity extends MainActivity {
         p.reload();
         if (p.getBool(K.KEEP_ON, true)) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (p.getBool(K.HI_REFRESH, true)) maxRefreshRate();
-        super.onCreate(b);
+        Trace.mark(getFilesDir(), "activity: Minecraft onCreate starting");
+        try {
+            super.onCreate(b);
+        } catch (Throwable t) {
+            Trace.crash(getFilesDir(), "Minecraft MainActivity.onCreate", t);
+            throw t;
+        }
+        Trace.mark(getFilesDir(), "activity: Minecraft onCreate done");
         overlay = new Overlay(this);
     }
 
@@ -58,6 +66,7 @@ public class GameActivity extends MainActivity {
     @Override
     public void onResume() {
         super.onResume();
+        Trace.mark(getFilesDir(), "activity: resumed");
         if (overlay != null) overlay.onResume();
     }
 

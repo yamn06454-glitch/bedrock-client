@@ -22,6 +22,7 @@ import android.widget.TextView;
 import com.yamn.bclient.core.K;
 import com.yamn.bclient.core.Native;
 import com.yamn.bclient.core.Prefs;
+import com.yamn.bclient.core.Trace;
 import com.yamn.bclient.ui.SettingsUi;
 import com.yamn.bclient.ui.Ui;
 
@@ -50,6 +51,7 @@ final class Overlay {
 
     private long lastFrames = -1, lastFrameT, lastBat, lastRam;
     private int lastSize = -1, lastAlpha = -1;
+    private boolean markedRunning;
     private String lastPos = "";
 
     Overlay(Activity a) {
@@ -98,6 +100,7 @@ final class Overlay {
         });
         restartB.draggable = false;
 
+        Trace.mark(act.getFilesDir(), "overlay: attached");
         apply();
         h.post(tick);
     }
@@ -208,6 +211,10 @@ final class Overlay {
                     hud.ramUsed = mi.totalMem - mi.availMem;
                 } catch (Throwable ignored) {
                 }
+            }
+            if (!markedRunning && (f > 30 || now - start > 20000)) {
+                markedRunning = true;
+                Trace.mark(act.getFilesDir(), Trace.OK_MARK + " (frames=" + f + ")");
             }
             if (!restartExpired && now - start > p.getInt(K.RESTART_SECS, 120) * 1000L) {
                 restartExpired = true;

@@ -31,6 +31,7 @@ public final class K {
     public static final String RESTART_SECS = "game.restartSecs";
     public static final String HI_REFRESH = "game.hiRefresh";
     public static final String KEEP_ON = "game.keepOn";
+    public static final String HOOKS = "game.hooks";          // render hooks (zoom + FPS)
 
     // HUD modules
     public static final String[] MODS = {"fps", "clock", "battery", "ram", "session", "text", "crosshair"};

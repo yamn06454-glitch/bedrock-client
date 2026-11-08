@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo;
 import android.util.Log;
 
 import com.yamn.bclient.core.GameEnv;
+import com.yamn.bclient.core.Trace;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,9 +27,12 @@ public class LoaderFactory extends AppComponentFactory {
             String proc = processName();
             if (proc == null || !proc.endsWith(":game")) return cl;
 
-            GameEnv.State st = GameEnv.read(new File(ai.dataDir, "files"));
+            File files = new File(ai.dataDir, "files");
+            Trace.mark(files, "factory: process " + proc + " pid " + android.os.Process.myPid());
+            GameEnv.State st = GameEnv.read(files);
             if (st == null || !new File(st.mcApk).exists()) {
                 Log.e(TAG, "game state missing - open the launcher first");
+                Trace.mark(files, "✗ factory: game state missing / Minecraft path changed");
                 return cl;
             }
 
@@ -41,9 +45,20 @@ public class LoaderFactory extends AppComponentFactory {
             String libs = ai.nativeLibraryDir + File.pathSeparator + st.libDir;
             Log.i(TAG, "game classloader: mc=" + st.version + " abi=" + st.abi);
             // Parent = boot loader, so our classes and Minecraft's live in the same loader.
-            return new PathClassLoader(dex.toString(), libs, cl.getParent());
+            ClassLoader gl = new PathClassLoader(dex.toString(), libs, cl.getParent());
+            try {
+                gl.loadClass("com.mojang.minecraftpe.MainActivity");
+                Trace.mark(files, "factory: classloader ok (mc " + st.version + ", " + st.abi + ")");
+            } catch (Throwable t) {
+                Trace.mark(files, "✗ factory: MainActivity not found in Minecraft dex: " + t);
+            }
+            return gl;
         } catch (Throwable t) {
             Log.e(TAG, "instantiateClassLoader failed", t);
+            try {
+                Trace.mark(new File(ai.dataDir, "files"), "✗ factory failed: " + Trace.stack(t));
+            } catch (Throwable ignored) {
+            }
             return cl;
         }
     }

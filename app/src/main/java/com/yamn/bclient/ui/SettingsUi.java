@@ -114,6 +114,8 @@ public final class SettingsUi {
         seek(s, "مدة ظهور زر إعادة التشغيل", K.RESTART_SECS, 20, 300, 120, v -> v + " ث");
         sw(s, "أعلى معدل تحديث للشاشة (90/120Hz)", K.HI_REFRESH, true);
         sw(s, "إبقاء الشاشة شغالة", K.KEEP_ON, true);
+        sw(s, "Render hooks (الزوم + عداد FPS)", K.HOOKS, true);
+        hint(s, "إذا اللعبة تطفي، طفّ هذا وجرب. يتطبق عند التشغيل القادم.");
         if (!inGame) hint(s, "تغييرات معدل التحديث وإبقاء الشاشة تتطبق عند تشغيل اللعبة القادم.");
 
         return root;
