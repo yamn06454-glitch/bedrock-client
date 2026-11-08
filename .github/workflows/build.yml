@@ -50,23 +50,23 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/*.apk "out/BedrockClient-v1.0.${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/*.apk "out/BedrockClient-v2.0.${{ github.run_number }}.apk"
           ls -la out
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BedrockClient-v1.0.${{ github.run_number }}
+          name: BedrockClient-v2.0.${{ github.run_number }}
           path: out/*.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Bedrock Client v1.0.${{ github.run_number }}
+          tag_name: v2.0.${{ github.run_number }}
+          name: Bedrock Client v2.0.${{ github.run_number }}
           make_latest: true
           files: out/*.apk
           body: |
-            ## Bedrock Client v1.0.${{ github.run_number }}
+            ## Bedrock Client v2.0.${{ github.run_number }}
             لانشر خاص لماين كرافت بيدروك (أندرويد) — يشغّل نسختك الأصلية من Google Play.
 
             **الميزات:** زوم (حقيقي/رقمي) • زر رجوع • HUD قابل للتخصيص (FPS، ساعة، بطارية، رام، مدة اللعب، نص، كروس هير) • إعادة تشغيل اللعبة من شاشة التحميل • لقطة شاشة • أعلى معدل تحديث
