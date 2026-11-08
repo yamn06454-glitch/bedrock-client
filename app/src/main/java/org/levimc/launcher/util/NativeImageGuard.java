@@ -50,11 +50,11 @@ public final class NativeImageGuard {
         if (!stagedFile.isFile() || stagedFile.length() == 0) {
             throw new IOException("Native library is empty: " + output.getName());
         }
-        // Native-image preparation is best-effort: if gxcore can't be loaded or the
-        // rewrite fails, publish the extracted library unchanged so launch can proceed
-        // instead of aborting with "Failed to load native image preparation".
-        if (NativeBridgeHelper.ensureGxCoreLoaded()) {
-            NativeBridgeHelper.rewriteImage(stagedFile.getAbsolutePath(), stagedFile.getAbsolutePath());
+        if (!NativeBridgeHelper.ensureGxCoreLoaded()) {
+            throw new IOException("Failed to load native image preparation");
+        }
+        if (!NativeBridgeHelper.rewriteImage(stagedFile.getAbsolutePath(), stagedFile.getAbsolutePath())) {
+            throw new IOException("Failed to prepare native library: " + output.getName());
         }
         try (RandomAccessFile file = new RandomAccessFile(stagedFile, "rw")) {
             file.getFD().sync();
