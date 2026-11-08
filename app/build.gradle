@@ -4,6 +4,9 @@ plugins {
 
 def runNumber = (System.getenv("VERSION_CODE") ?: "1").toInteger()
 def ksPath = System.getenv("KEYSTORE_PATH")
+// Developer-only test switch. Set ONLY by the manual "DEV build" workflow run.
+// Public release builds compile with false, so the bypass code is not even in the APK.
+def devSkipLegit = System.getenv("DEV_SKIP_LEGIT") == "true"
 
 android {
     namespace 'com.yamn.bclient'
@@ -14,7 +17,8 @@ android {
         minSdk 28
         targetSdk 34
         versionCode 100 + runNumber
-        versionName "2.0.${runNumber}"
+        versionName "2.0.${runNumber}" + (devSkipLegit ? "-DEV" : "")
+        buildConfigField "boolean", "DEV_SKIP_LEGIT", devSkipLegit ? "true" : "false"
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a'
         }

@@ -5,6 +5,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import com.yamn.bclient.BuildConfig;
+
 /** Detects the installed Minecraft and whether it's the genuine Google Play copy. */
 public final class McCheck {
     public static final String PLAY_STORE = "com.android.vending";
@@ -17,6 +19,8 @@ public final class McCheck {
         public long versionCode;
         public String installer;
         public boolean legit;
+        /** true only in DEV test builds when a non-Play copy was allowed through */
+        public boolean devBypass;
     }
 
     @SuppressWarnings("deprecation")
@@ -40,6 +44,11 @@ public final class McCheck {
         } catch (Throwable ignored) {
         }
         i.legit = PLAY_STORE.equals(i.installer);
+        // Compile-time constant: in public builds javac drops this whole block.
+        if (BuildConfig.DEV_SKIP_LEGIT && !i.legit) {
+            i.devBypass = true;
+            i.legit = true;
+        }
         return i;
     }
 }

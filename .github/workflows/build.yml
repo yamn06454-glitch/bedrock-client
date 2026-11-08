@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      dev_build:
+        description: "DEV build: يتجاوز فحص النسخة الأصلية (للاختبار فقط - ما ينشر Release)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -15,7 +20,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEV_SKIP_LEGIT: ${{ inputs.dev_build && 'true' || 'false' }}
+      APK_NAME: BedrockClient-v2.0.${{ github.run_number }}${{ inputs.dev_build && '-DEV' || '' }}
     steps:
+      - name: Only the repo owner may make DEV builds
+        if: ${{ inputs.dev_build && github.actor != github.repository_owner }}
+        run: |
+          echo "::error::DEV builds are restricted to the repository owner"
+          exit 1
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
@@ -50,15 +64,17 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/*.apk "out/BedrockClient-v2.0.${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/*.apk "out/$APK_NAME.apk"
           ls -la out
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BedrockClient-v2.0.${{ github.run_number }}
+          name: ${{ env.APK_NAME }}
           path: out/*.apk
+          retention-days: ${{ inputs.dev_build && 1 || 30 }}
 
       - name: Publish release
+        if: ${{ !inputs.dev_build }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v2.0.${{ github.run_number }}

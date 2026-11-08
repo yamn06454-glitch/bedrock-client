@@ -52,6 +52,13 @@ public class MainActivity extends Activity {
         TextView title = Ui.text(this, "Bedrock Client", 30, Ui.TEXT, true);
         root.addView(title);
         root.addView(Ui.text(this, "لانشر خاص لماين كرافت بيدروك • v" + BuildConfig.VERSION_NAME, 13, Ui.SUB, false));
+        if (BuildConfig.DEV_SKIP_LEGIT) {
+            TextView dev = Ui.text(this, "🧪 نسخة مطوّر للاختبار — فحص النسخة الأصلية متوقف. لا تنشرها.", 13, 0xFF0B0D10, true);
+            dev.setBackground(Ui.round(this, 0xFFFACC15, 10));
+            int dp8 = Ui.dp(this, 8);
+            dev.setPadding(dp8, dp8, dp8, dp8);
+            root.addView(dev, Ui.lp(-1, -2, Ui.dp(this, 10)));
+        }
 
         // status card
         LinearLayout card = Ui.vbox(this);
@@ -122,7 +129,8 @@ public class MainActivity extends Activity {
             mcTitle.setText("✅ Minecraft " + info.versionName);
             GameEnv.State st = GameEnv.read(getFilesDir());
             boolean ready = st != null && info.versionName.equals(st.version);
-            mcSub.setText("نسخة أصلية من Google Play" + (ready ? " • الملفات جاهزة" : " • بيتجهز أول تشغيل"));
+            String src = info.devBypass ? "🧪 نسخة غير أصلية (مسموحة لأنها نسخة مطوّر)" : "نسخة أصلية من Google Play";
+            mcSub.setText(src + (ready ? " • الملفات جاهزة" : " • بيتجهز أول تشغيل"));
             launchBtn.setText("▶  تشغيل اللعبة");
         }
     }
