@@ -278,20 +278,30 @@ public class MainActivity extends Activity {
         while (mm.find()) pid = mm.group(1);
         StringBuilder out = new StringBuilder();
         try {
-            java.lang.Process pr = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-v", "threadtime", "-t", "3000"});
+            java.lang.Process pr = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-v", "threadtime", "-t", "30000"});
             java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pr.getInputStream()));
-            java.util.ArrayDeque<String> keep = new java.util.ArrayDeque<>();
+            java.util.ArrayDeque<String> tail = new java.util.ArrayDeque<>();
+            java.util.ArrayDeque<String> auth = new java.util.ArrayDeque<>();
+            java.util.regex.Pattern authP = java.util.regex.Pattern.compile(
+                    "(?i)xal|xbox|msa|sisu|auth|sign.?in|login|token|playfab|mooshroom|licens|integrity");
             String line;
             while ((line = r.readLine()) != null) {
                 boolean mine = pid != null && line.matches("^\\S+\\s+\\S+\\s+" + pid + "\\s.*");
                 boolean important = line.contains("AndroidRuntime") || line.contains("Fatal signal")
                         || line.contains("BClient") || line.contains(" F libc") || line.contains(" F DEBUG");
+                if (mine && authP.matcher(line).find()) {
+                    auth.add(line);
+                    if (auth.size() > 400) auth.poll();
+                }
                 if (mine || important) {
-                    keep.add(line);
-                    if (keep.size() > 400) keep.poll();
+                    tail.add(line);
+                    if (tail.size() > 300) tail.poll();
                 }
             }
-            for (String l : keep) out.append(l).append('\n');
+            out.append(">> sign-in / Xbox lines:\n");
+            for (String l : auth) out.append(l).append('\n');
+            out.append("\n>> last lines:\n");
+            for (String l : tail) out.append(l).append('\n');
         } catch (Throwable t) {
             out.append("logcat failed: ").append(t);
         }
