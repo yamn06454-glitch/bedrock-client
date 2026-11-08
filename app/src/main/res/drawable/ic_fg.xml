@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- block: dirt side -->
+    <path android:fillColor="#7A5230" android:pathData="M34,44 L74,44 L74,76 L34,76 Z" />
+    <!-- grass top -->
+    <path android:fillColor="#4ADE80" android:pathData="M34,32 L74,32 L74,48 L34,48 Z" />
+    <path android:fillColor="#4ADE80" android:pathData="M38,48 L44,48 L44,54 L38,54 Z M52,48 L58,48 L58,56 L52,56 Z M66,48 L72,48 L72,52 L66,52 Z" />
+    <!-- zoom lens ring -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="4" android:fillColor="#00000000"
+        android:pathData="M62,62 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="5" android:strokeLineCap="round"
+        android:pathData="M69,69 L78,78" />
+</vector>

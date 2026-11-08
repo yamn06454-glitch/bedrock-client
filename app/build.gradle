@@ -1,0 +1,84 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+def ksPath = System.getenv("KEYSTORE_PATH")
+
+android {
+    namespace 'com.yamn.bclient'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.yamn.bclient'
+        minSdk 28
+        targetSdk 34
+        versionCode runNumber
+        versionName "1.0.${runNumber}"
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+        externalNativeBuild {
+            cmake {
+                // Pure C, no STL: avoids clashing with Minecraft's own libc++_shared.so
+                arguments "-DANDROID_STL=none"
+                cFlags "-O2", "-fvisibility=hidden"
+            }
+        }
+    }
+
+    signingConfigs {
+        // Fixed key committed in the repo so every CI build has the same signature
+        // (updates install over each other). Set KEYSTORE_* secrets to use a private key.
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+        release {
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        prefab true
+        buildConfig true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // Real .so files on disk so the game classloader can find them
+            useLegacyPackaging true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.bytedance.android:shadowhook:1.0.10'
+    compileOnly project(':mcstub')
+}
