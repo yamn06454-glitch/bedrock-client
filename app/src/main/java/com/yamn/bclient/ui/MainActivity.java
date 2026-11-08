@@ -282,6 +282,7 @@ public class MainActivity extends Activity {
             java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pr.getInputStream()));
             java.util.ArrayDeque<String> tail = new java.util.ArrayDeque<>();
             java.util.ArrayDeque<String> auth = new java.util.ArrayDeque<>();
+            java.util.ArrayList<String> fatal = new java.util.ArrayList<>(); // head of a native/ART abort
             java.util.regex.Pattern authP = java.util.regex.Pattern.compile(
                     "(?i)xal|xbox|msa|sisu|auth|sign.?in|login|token|playfab|mooshroom|licens|integrity");
             String line;
@@ -289,7 +290,11 @@ public class MainActivity extends Activity {
                 boolean mine = pid != null && line.matches("^\\S+\\s+\\S+\\s+" + pid + "\\s.*");
                 boolean important = line.contains("AndroidRuntime") || line.contains("Fatal signal")
                         || line.contains("BClient") || line.contains(" F libc") || line.contains(" F DEBUG");
-                if (mine && authP.matcher(line).find()) {
+                if (mine && fatal.size() < 60 && (line.contains(" F ") || line.contains("Abort message")
+                        || line.contains("JNI DETECTED") || line.contains("Check failed"))) {
+                    fatal.add(line);
+                }
+                if (mine && authP.matcher(line).find() && !line.contains("runtime.cc")) {
                     auth.add(line);
                     if (auth.size() > 400) auth.poll();
                 }
@@ -297,6 +302,11 @@ public class MainActivity extends Activity {
                     tail.add(line);
                     if (tail.size() > 300) tail.poll();
                 }
+            }
+            if (!fatal.isEmpty()) {
+                out.append(">> abort (first lines):\n");
+                for (String l : fatal) out.append(l).append('\n');
+                out.append('\n');
             }
             out.append(">> sign-in / Xbox lines:\n");
             for (String l : auth) out.append(l).append('\n');
