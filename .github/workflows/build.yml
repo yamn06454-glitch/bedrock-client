@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.ref }}-${{ inputs.dev_build && 'dev' || 'release' }}
   cancel-in-progress: true
 
 jobs:
