@@ -1,2 +1,0 @@
-add_library(discord_partner_sdk SHARED discord_stub.cpp)
-set_target_properties(discord_partner_sdk PROPERTIES OUTPUT_NAME "discord_partner_sdk")
