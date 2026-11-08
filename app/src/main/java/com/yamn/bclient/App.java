@@ -50,7 +50,7 @@ public class App extends Application {
         try {
             PackageManager pm = getPackageManager();
             mcInfo = pm.getApplicationInfo(GameEnv.MC_PKG, 0);
-            mcRes = pm.getResourcesForApplication(mcInfo);
+            mcRes = new com.yamn.bclient.core.McResources(pm.getResourcesForApplication(mcInfo), getPackageName());
             mcTheme = findMcTheme(pm);
             Trace.mark(files, "app: Minecraft resources ok, theme=0x" + Integer.toHexString(mcTheme));
         } catch (Throwable t) {

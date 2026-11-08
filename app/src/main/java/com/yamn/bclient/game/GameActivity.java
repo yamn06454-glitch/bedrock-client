@@ -67,6 +67,14 @@ public class GameActivity extends MainActivity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
+    public void onConfigurationChanged(android.content.res.Configuration c) {
+        Resources r = App.mcResources();
+        if (r != null) r.updateConfiguration(c, r.getDisplayMetrics());
+        super.onConfigurationChanged(c);
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         Trace.mark(getFilesDir(), "activity: resumed");
