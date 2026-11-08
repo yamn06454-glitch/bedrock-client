@@ -45,9 +45,11 @@ public final class McCheck {
         }
         i.legit = PLAY_STORE.equals(i.installer);
         // Compile-time constant: in public builds javac drops this whole block.
-        if (BuildConfig.DEV_SKIP_LEGIT && !i.legit) {
-            i.devBypass = true;
-            i.legit = true;
+        if (BuildConfig.DEV_SKIP_LEGIT) {
+            if (!i.legit) {
+                i.devBypass = true;
+                i.legit = true;
+            }
         }
         return i;
     }

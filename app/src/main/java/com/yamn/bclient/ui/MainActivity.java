@@ -129,7 +129,10 @@ public class MainActivity extends Activity {
             mcTitle.setText("✅ Minecraft " + info.versionName);
             GameEnv.State st = GameEnv.read(getFilesDir());
             boolean ready = st != null && info.versionName.equals(st.version);
-            String src = info.devBypass ? "🧪 نسخة غير أصلية (مسموحة لأنها نسخة مطوّر)" : "نسخة أصلية من Google Play";
+            String src = "نسخة أصلية من Google Play";
+            if (BuildConfig.DEV_SKIP_LEGIT) {
+                if (info.devBypass) src = "🧪 نسخة غير أصلية (مسموحة لأنها نسخة مطوّر)";
+            }
             mcSub.setText(src + (ready ? " • الملفات جاهزة" : " • بيتجهز أول تشغيل"));
             launchBtn.setText("▶  تشغيل اللعبة");
         }
